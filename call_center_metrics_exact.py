@@ -49,16 +49,30 @@ def write_to_csv(file_name, results):
         for result in results:
             writer.writerow(result)
 
+def calculate_metrics(capacity, lambd, mu, patience = 10, n_states=None):
+    if n_states is None:
+        n_states = capacity * 32
+    asa = 6 # 10 minutes service level
+    #patience = 15 # 4 = 60/15 minutes is the average wait time until abandon
+    probs_best = calculate_probs_best(capacity, lambd, mu, patience, n_states)           
+    buffer_len = buffer_length(capacity, n_states, probs_best)
+    waiting_prob_value = waiting_prob(capacity, n_states, probs_best)
+    occupancy_value = occupancy(capacity, n_states, probs_best) 
+    abandon_prob_value = abandon_prob(lambd, mu, capacity, occupancy_value)
+    service_level_value = service_level(lambd, mu, capacity, waiting_prob_value, asa,abandon_prob_value)
+    return service_level_value, abandon_prob_value,occupancy_value
+
+
 def main():
-    lambd = 120 #customer / hour
-    mu = 4 # customer / hour
-    patiences = [0.00001,0.5,1,2,4] #lost calls per hour
-    capacities = [31, 32, 33, 34] # number of agents
-    asa = 8  # service requirement for wait times in minutes (service level)
+    lambd = 16.06#customer / hour
+    mu = 60/13.5 # customer / hour
+    patiences = [6,8,10,12,14] #lost calls per hour
+    capacities = [2, 3, 4, 5, 6] # number of agents
+    asa = 10  # service requirement for wait times in minutes (service level)
     results = []
     for patience in patiences:
         for capacity in capacities:
-            n_states = capacity * 8
+            n_states = capacity * 16
             probs_best = calculate_probs_best(capacity, lambd, mu, patience, n_states)           
             buffer_len = buffer_length(capacity, n_states, probs_best)
             waiting_prob_value = waiting_prob(capacity, n_states, probs_best)
@@ -70,6 +84,7 @@ def main():
                                 occupancy_value, abandon_prob_value])
 
     write_to_csv('call_center_metrics_exact.csv', results)
+    print(calculate_metrics(6, 16.064927733086996, 60/13.5))
 
 if __name__ == "__main__":
     main()
